@@ -1,7 +1,24 @@
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { db } from '@/services/firebase';
+import { collection, getDocs } from 'firebase/firestore';
+import { useEffect } from 'react';
 
 export default function HomeScreen() {
+  // Test Firebase connection
+  useEffect(() => {
+    const testConnection = async () => {
+      try {
+        const querySnapshot = await getDocs(collection(db, 'test'));
+        console.log('✅ Firebase connected!');
+        console.log('Documents:', querySnapshot.size);
+      } catch (error) {
+        console.error('❌ Firebase error:', error);
+      }
+    };
+    testConnection();
+  }, [])
+
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
