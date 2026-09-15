@@ -1,31 +1,30 @@
-import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+import { useAuth } from "@/contexts/AuthContext";
+import { Redirect } from "expo-router";
+import { ActivityIndicator, StyleSheet, View } from "react-native";
 
-export default function App() {
-  return (
-    <View style={styles.container}>
-      <Text style={styles.title}>♻️ RecycleMated</Text>
-      <Text style={styles.subtitle}>Recycling Locator App</Text>
-      <StatusBar style="auto" />
-    </View>
-  );
+export default function Index() {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#2E7D32" />
+      </View>
+    );
+  }
+
+  if (user) {
+    return <Redirect href="/(tabs)/home" />;
+  }
+
+  return <Redirect href="/login" />;
 }
 
 const styles = StyleSheet.create({
-  container: {
+  loadingContainer: {
     flex: 1,
-    backgroundColor: '#E8F5E9',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#2E7D32',
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#558B2F',
-    marginTop: 10,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#F5F5F5",
   },
 });
