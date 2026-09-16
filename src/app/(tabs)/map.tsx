@@ -1,5 +1,6 @@
 import { getAllCenters } from "@/services/firestoreService";
 import { useEffect, useState } from "react";
+import CenterCard from "@/components/CenterCard";
 import {
   ActivityIndicator,
   ScrollView,
@@ -44,22 +45,18 @@ export default function MapScreen() {
           />
         ) : (
           centers.map((center) => (
-            <View key={center.id} style={styles.centerCard}>
-              <View style={styles.centerHeader}>
-                <Text style={styles.centerName}>{center.name}</Text>
-                <Text style={styles.centerRating}>⭐ {center.rating}</Text>
-              </View>
-              <Text style={styles.centerAddress}>📍 {center.address}</Text>
-              <Text style={styles.centerHours}>🕐 {center.openHours}</Text>
-              <Text style={styles.centerPhone}>📞 {center.phone}</Text>
-              <View style={styles.materialsRow}>
-                {center.materials?.map((material: string, index: number) => (
-                  <View key={index} style={styles.materialChip}>
-                    <Text style={styles.materialText}>{material}</Text>
-                  </View>
-                ))}
-              </View>
-            </View>
+            <CenterCard
+              key={center.id}
+              name={center.name}
+              address={center.address}
+              phone={center.phone}
+              openHours={center.openHours}
+              rating={center.rating}
+              materials={center.materials}
+              onPress={() => {
+                console.log("Center pressed:", center.name);
+              }}
+            />
           ))
         )}
       </ScrollView>
