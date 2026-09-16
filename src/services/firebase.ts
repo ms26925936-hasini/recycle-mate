@@ -3,7 +3,7 @@ import { getFirestore } from 'firebase/firestore';
 import { initializeAuth, getReactNativePersistence } from 'firebase/auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// Firebase config
+// Firebase config - Take from firebase console
 const firebaseConfig = {
   apiKey: "AIzaSyDWx4SPnX9BB2u0-VRn_m8Gr1th5i5Ew_4",
   authDomain: "recyclemate-a407d.firebaseapp.com",
@@ -13,10 +13,10 @@ const firebaseConfig = {
   appId: "1:833304413312:web:2430b77398e84354ca1265"
 };
 
-// Initialize Firebase
+// Initialize Firebase - Connect to firebase
 const app = initializeApp(firebaseConfig);
 
-// Initialize Firestore
+// Initialize Firestore (database)
 export const db = getFirestore(app);
 
 // Initialize Auth with AsyncStorage persistence

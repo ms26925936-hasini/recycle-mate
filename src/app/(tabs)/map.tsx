@@ -1,141 +1,141 @@
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { getAllCenters } from "@/services/firestoreService";
+import { useEffect, useState } from "react";
+import {
+  ActivityIndicator,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function MapScreen() {
+  const [centers, setCenters] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadCenters();
+  }, []);
+
+  const loadCenters = async () => {
+    setLoading(true);
+    const { centers: centersData, error } = await getAllCenters();
+    if (!error) {
+      setCenters(centersData);
+    }
+    setLoading(false);
+  };
+
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
+    <SafeAreaView style={styles.container} edges={["bottom"]}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
           <Text style={styles.headerTitle}>🗺️ Recycling Centers</Text>
           <Text style={styles.headerSubtitle}>
-            Find recycling centers near you
+            {centers.length} centers available
           </Text>
         </View>
 
-        <View style={styles.mapPlaceholder}>
-          <Text style={styles.mapIcon}>📍</Text>
-          <Text style={styles.mapText}>Map Loading...</Text>
-          <Text style={styles.mapSubtext}>
-            GPS integration coming soon
-          </Text>
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Nearby Centers</Text>
-          <View style={styles.placeholderCard}>
-            <Text style={styles.placeholderText}>
-              🚧 Location feature will be implemented in Week 2
-            </Text>
-          </View>
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Materials Accepted</Text>
-          <View style={styles.materialsRow}>
-            <View style={styles.materialChip}>
-              <Text style={styles.materialText}>♻️ Plastic</Text>
+        {loading ? (
+          <ActivityIndicator
+            size="large"
+            color="#2E7D32"
+            style={{ marginTop: 40 }}
+          />
+        ) : (
+          centers.map((center) => (
+            <View key={center.id} style={styles.centerCard}>
+              <View style={styles.centerHeader}>
+                <Text style={styles.centerName}>{center.name}</Text>
+                <Text style={styles.centerRating}>⭐ {center.rating}</Text>
+              </View>
+              <Text style={styles.centerAddress}>📍 {center.address}</Text>
+              <Text style={styles.centerHours}>🕐 {center.openHours}</Text>
+              <Text style={styles.centerPhone}>📞 {center.phone}</Text>
+              <View style={styles.materialsRow}>
+                {center.materials?.map((material: string, index: number) => (
+                  <View key={index} style={styles.materialChip}>
+                    <Text style={styles.materialText}>{material}</Text>
+                  </View>
+                ))}
+              </View>
             </View>
-            <View style={styles.materialChip}>
-              <Text style={styles.materialText}>🍶 Glass</Text>
-            </View>
-            <View style={styles.materialChip}>
-              <Text style={styles.materialText}>📄 Paper</Text>
-            </View>
-            <View style={styles.materialChip}>
-              <Text style={styles.materialText}>🥫 Metal</Text>
-            </View>
-          </View>
-        </View>
+          ))
+        )}
       </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F5F5F5',
-  },
-  scrollContent: {
-    padding: 16,
-  },
-  header: {
-    marginBottom: 16,
-  },
+  container: { flex: 1, backgroundColor: "#F5F5F5" },
+  scrollContent: { padding: 16 },
+  header: { marginBottom: 16 },
   headerTitle: {
     fontSize: 24,
-    fontWeight: 'bold',
-    color: '#2E7D32',
+    fontWeight: "bold",
+    color: "#2E7D32",
   },
   headerSubtitle: {
     fontSize: 14,
-    color: '#666',
+    color: "#666",
     marginTop: 4,
   },
-  mapPlaceholder: {
-    backgroundColor: '#E8F5E9',
+  centerCard: {
+    backgroundColor: "#FFFFFF",
     borderRadius: 12,
-    height: 200,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
-    borderWidth: 2,
-    borderColor: '#A5D6A7',
-    borderStyle: 'dashed',
+    padding: 16,
+    marginBottom: 12,
+    elevation: 2,
   },
-  mapIcon: {
-    fontSize: 48,
+  centerHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 8,
   },
-  mapText: {
+  centerName: {
     fontSize: 16,
-    fontWeight: 'bold',
-    color: '#2E7D32',
+    fontWeight: "bold",
+    color: "#333",
+    flex: 1,
   },
-  mapSubtext: {
-    fontSize: 12,
-    color: '#666',
-    marginTop: 4,
-  },
-  section: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 12,
-  },
-  placeholderCard: {
-    backgroundColor: '#FFF9C4',
-    borderRadius: 8,
-    padding: 16,
-    alignItems: 'center',
-  },
-  placeholderText: {
+  centerRating: {
     fontSize: 14,
-    color: '#F57F17',
-    textAlign: 'center',
+    color: "#F57F17",
+    fontWeight: "bold",
+  },
+  centerAddress: {
+    fontSize: 13,
+    color: "#666",
+    marginBottom: 4,
+  },
+  centerHours: {
+    fontSize: 13,
+    color: "#666",
+    marginBottom: 4,
+  },
+  centerPhone: {
+    fontSize: 13,
+    color: "#666",
+    marginBottom: 8,
   },
   materialsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
+    flexDirection: "row",
+    flexWrap: "wrap",
+    marginTop: 8,
   },
   materialChip: {
-    backgroundColor: '#E8F5E9',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
-    marginRight: 8,
-    marginBottom: 8,
+    backgroundColor: "#E8F5E9",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginRight: 6,
+    marginBottom: 6,
   },
   materialText: {
-    fontSize: 13,
-    color: '#2E7D32',
-    fontWeight: '600',
+    fontSize: 11,
+    color: "#2E7D32",
+    fontWeight: "600",
   },
 });

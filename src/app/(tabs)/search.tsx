@@ -1,100 +1,72 @@
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  ActivityIndicator,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { getAllItems } from '@/services/firestoreService';
 
 export default function SearchScreen() {
+  const [items, setItems] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadItems();
+  }, []);
+
+  const loadItems = async () => {
+    setLoading(true);
+    const { items: itemsData, error } = await getAllItems();
+    if (!error) {
+      setItems(itemsData);
+    }
+    setLoading(false);
+  };
+
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
           <Text style={styles.headerTitle}>🔍 Search Items</Text>
           <Text style={styles.headerSubtitle}>
-            Check if an item is recyclable
+            {items.length} items in database
           </Text>
         </View>
 
-        <View style={styles.searchBox}>
-          <Text style={styles.searchIcon}>🔍</Text>
-          <Text style={styles.searchPlaceholder}>
-            Search coming soon...
-          </Text>
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Categories</Text>
-          
-          <View style={styles.categoryCard}>
-            <Text style={styles.categoryIcon}>♻️</Text>
-            <View style={styles.categoryInfo}>
-              <Text style={styles.categoryName}>Plastic</Text>
-              <Text style={styles.categoryDesc}>
-                Bottles, bags, containers
-              </Text>
+        {loading ? (
+          <ActivityIndicator size="large" color="#2E7D32" style={{ marginTop: 40 }} />
+        ) : (
+          items.map((item) => (
+            <View key={item.id} style={styles.itemCard}>
+              <Text style={styles.itemIcon}>{item.icon}</Text>
+              <View style={styles.itemInfo}>
+                <Text style={styles.itemName}>{item.name}</Text>
+                <Text style={styles.itemCategory}>{item.category}</Text>
+                <Text style={styles.itemTips}>{item.tips}</Text>
+              </View>
+              <View style={styles.itemRight}>
+                {item.recyclable ? (
+                  <Text style={styles.recyclable}>✅</Text>
+                ) : (
+                  <Text style={styles.notRecyclable}>❌</Text>
+                )}
+                <Text style={styles.points}>+{item.points}</Text>
+              </View>
             </View>
-          </View>
-
-          <View style={styles.categoryCard}>
-            <Text style={styles.categoryIcon}>🍶</Text>
-            <View style={styles.categoryInfo}>
-              <Text style={styles.categoryName}>Glass</Text>
-              <Text style={styles.categoryDesc}>
-                Bottles, jars, containers
-              </Text>
-            </View>
-          </View>
-
-          <View style={styles.categoryCard}>
-            <Text style={styles.categoryIcon}>📄</Text>
-            <View style={styles.categoryInfo}>
-              <Text style={styles.categoryName}>Paper</Text>
-              <Text style={styles.categoryDesc}>
-                Newspapers, cardboard, books
-              </Text>
-            </View>
-          </View>
-
-          <View style={styles.categoryCard}>
-            <Text style={styles.categoryIcon}>🥫</Text>
-            <View style={styles.categoryInfo}>
-              <Text style={styles.categoryName}>Metal</Text>
-              <Text style={styles.categoryDesc}>
-                Cans, tins, foil
-              </Text>
-            </View>
-          </View>
-
-          <View style={styles.categoryCard}>
-            <Text style={styles.categoryIcon}>💻</Text>
-            <View style={styles.categoryInfo}>
-              <Text style={styles.categoryName}>E-Waste</Text>
-              <Text style={styles.categoryDesc}>
-                Phones, batteries, electronics
-              </Text>
-            </View>
-          </View>
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Coming Soon</Text>
-          <Text style={styles.placeholder}>
-            🚧 Dropdown search will be implemented in Week 2
-          </Text>
-        </View>
+          ))
+        )}
       </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F5F5F5',
-  },
-  scrollContent: {
-    padding: 16,
-  },
-  header: {
-    marginBottom: 16,
-  },
+  container: { flex: 1, backgroundColor: '#F5F5F5' },
+  scrollContent: { padding: 16 },
+  header: { marginBottom: 16 },
   headerTitle: {
     fontSize: 24,
     fontWeight: 'bold',
@@ -105,65 +77,51 @@ const styles = StyleSheet.create({
     color: '#666',
     marginTop: 4,
   },
-  searchBox: {
+  itemCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
     padding: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-  },
-  searchIcon: {
-    fontSize: 20,
-    marginRight: 12,
-  },
-  searchPlaceholder: {
-    fontSize: 14,
-    color: '#999',
-  },
-  section: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
     marginBottom: 12,
-  },
-  categoryCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
+    elevation: 2,
   },
-  categoryIcon: {
-    fontSize: 28,
+  itemIcon: {
+    fontSize: 32,
     marginRight: 12,
   },
-  categoryInfo: {
+  itemInfo: {
     flex: 1,
   },
-  categoryName: {
+  itemName: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: 'bold',
     color: '#333',
   },
-  categoryDesc: {
+  itemCategory: {
     fontSize: 12,
+    color: '#2E7D32',
+    marginTop: 2,
+    textTransform: 'capitalize',
+  },
+  itemTips: {
+    fontSize: 11,
     color: '#999',
     marginTop: 2,
   },
-  placeholder: {
+  itemRight: {
+    alignItems: 'center',
+  },
+  recyclable: {
+    fontSize: 24,
+  },
+  notRecyclable: {
+    fontSize: 24,
+  },
+  points: {
     fontSize: 14,
-    color: '#F57F17',
-    fontStyle: 'italic',
-    textAlign: 'center',
-    padding: 8,
+    fontWeight: 'bold',
+    color: '#2E7D32',
+    marginTop: 4,
   },
 });

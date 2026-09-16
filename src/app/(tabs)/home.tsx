@@ -1,48 +1,91 @@
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  ActivityIndicator,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { db } from '@/services/firebase';
-import { collection, getDocs } from 'firebase/firestore';
-import { useEffect } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
+import { getUserProfile } from '@/services/firestoreService';
 
 export default function HomeScreen() {
-  // Test Firebase connection
+  const { user } = useAuth();
+  const [profile, setProfile] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
   useEffect(() => {
-    const testConnection = async () => {
-      try {
-        const querySnapshot = await getDocs(collection(db, 'test'));
-        console.log('✅ Firebase connected!');
-        console.log('Documents:', querySnapshot.size);
-      } catch (error) {
-        console.error('❌ Firebase error:', error);
+    loadUserProfile();
+  }, []);
+
+  const loadUserProfile = async () => {
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+
+     try {
+      setLoading(true);
+      const { user: userProfile, error } = await getUserProfile(user.uid);
+      
+      if (error) {
+        setProfile({ points: 0, itemsRecycled: 0 });
+      } else {
+        setProfile(userProfile);
       }
-    };
-    testConnection();
-  }, [])
+    } catch (err) {
+      console.log('Unexpected error:', err);
+      setProfile({ points: 0, itemsRecycled: 0 });
+    } finally {
+      setLoading(false);
+    }    
+  };
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
+        {/* Welcome Card */}
         <View style={styles.welcomeCard}>
-          <Text style={styles.welcomeTitle}>♻️ Welcome to RecycleMate</Text>
+          <Text style={styles.welcomeTitle}>
+            ♻️ Welcome back!
+          </Text>
           <Text style={styles.welcomeSubtitle}>
-            Track your recycling, find centers, earn points!
+            {user?.email || 'User'}
           </Text>
         </View>
 
+        {/* Points Card */}
         <View style={styles.pointsCard}>
           <Text style={styles.pointsLabel}>Your Eco Points</Text>
-          <Text style={styles.pointsValue}>0</Text>
-          <Text style={styles.pointsSubtext}>Start recycling to earn points</Text>
+          {loading ? (
+            <ActivityIndicator size="large" color="#2E7D32" />
+          ) : (
+            <>
+              <Text style={styles.pointsValue}>
+                {profile?.points || 0}
+              </Text>
+              <Text style={styles.pointsSubtext}>
+                {profile?.itemsRecycled || 0} items recycled
+              </Text>
+            </>
+          )}
         </View>
 
+        {/* Nearby Centers */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>📍 Nearby Centers</Text>
-          <Text style={styles.placeholder}>Location feature coming soon...</Text>
+          <Text style={styles.placeholder}>
+            Map feature coming soon...
+          </Text>
         </View>
 
+        {/* Recent Activity */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>🕐 Recent Activity</Text>
-          <Text style={styles.placeholder}>No activity yet</Text>
+          <Text style={styles.placeholder}>
+            No activity yet
+          </Text>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -50,13 +93,8 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F5F5F5',
-  },
-  scrollContent: {
-    padding: 16,
-  },
+  container: { flex: 1, backgroundColor: '#F5F5F5' },
+  scrollContent: { padding: 16 },
   welcomeCard: {
     backgroundColor: '#2E7D32',
     borderRadius: 12,
@@ -80,10 +118,6 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     alignItems: 'center',
     elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
   },
   pointsLabel: {
     fontSize: 14,

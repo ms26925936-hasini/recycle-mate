@@ -5,7 +5,8 @@ import {
   onAuthStateChanged,
   User,
 } from 'firebase/auth';
-import { auth } from './firebase';
+import { auth, db } from './firebase';
+import { doc, setDoc } from 'firebase/firestore';
 
 // Sign up with email and password
 export const signUp = async (email: string, password: string) => {
@@ -15,7 +16,16 @@ export const signUp = async (email: string, password: string) => {
       email,
       password
     );
-    return { user: userCredential.user, error: null };
+
+    const user = userCredential.user;
+    await setDoc(doc(db, 'users', user.uid), {
+      email: email,
+      points: 0,
+      itemsRecycled: 0,
+      createdAt: new Date().toISOString(),
+    });
+
+    return { user, error: null };
   } catch (error: any) {
     return { user: null, error: error.message };
   }
