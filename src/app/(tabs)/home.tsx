@@ -1,3 +1,5 @@
+import { useFocusEffect } from 'expo-router';
+import { useCallback } from 'react';
 import { useState, useEffect } from "react";
 import ProgressRing from "@/components/ProgressRing";
 import {
@@ -16,9 +18,11 @@ export default function HomeScreen() {
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    loadUserProfile();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      loadUserProfile();
+    }, [user])
+  );
 
   const loadUserProfile = async () => {
     if (!user) {

@@ -70,7 +70,7 @@ export default function ProgressRing({
       {/* Center content */}
       <View style={styles.centerContent}>
         <Text style={[styles.progressText, { color }]}>
-          {clampedProgress}%
+          {clampedProgress.toFixed(1)}%
         </Text>
         {value && <Text style={styles.valueText}>{value}</Text>}
         {label && <Text style={styles.labelText}>{label}</Text>}

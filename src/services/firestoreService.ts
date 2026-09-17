@@ -115,7 +115,7 @@ export const updateUserPoints = async (
   uid: string,
   pointsToAdd: number
 ) => {
-  try {
+  try {    
     const userRef = doc(db, 'users', uid);
     const snapshot = await getDoc(userRef);
     if (snapshot.exists()) {

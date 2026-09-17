@@ -1,15 +1,12 @@
-import { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  ActivityIndicator,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { getAllItems } from '@/services/firestoreService';
+import { useAuth } from "@/contexts/AuthContext";
+import { getAllItems } from "@/services/firestoreService";
+import { recordRecycle } from "@/services/recycleService";
+import { useEffect, useState } from "react";
+import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function SearchScreen() {
+  const { user } = useAuth();
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -26,8 +23,38 @@ export default function SearchScreen() {
     setLoading(false);
   };
 
+  const handleRecycle = (item: any) => {
+    if (!user) {
+      Alert.alert("Error", "Please login first");
+      return;
+    }
+
+    Alert.alert(
+      "Confirm Recycling",
+      `Did you recycle "${item.name}"?\n\nYou'll earn ${item.points} points!`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Yes, I did!",
+          onPress: async () => {
+            const { error } = await recordRecycle(user.uid, item);
+            if (error) {
+              Alert.alert("Error", error);
+            } else {
+              Alert.alert(
+                "🎉 Success!",
+                `You earned ${item.points} eco-points!`,
+                [{ text: "Awesome!" }],
+              );
+            }
+          },
+        },
+      ],
+    );
+  };
+
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
+    <SafeAreaView style={styles.container} edges={["bottom"]}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
           <Text style={styles.headerTitle}>🔍 Search Items</Text>
@@ -37,10 +64,20 @@ export default function SearchScreen() {
         </View>
 
         {loading ? (
-          <ActivityIndicator size="large" color="#2E7D32" style={{ marginTop: 40 }} />
+          <ActivityIndicator
+            size="large"
+            color="#2E7D32"
+            style={{ marginTop: 40 }}
+          />
         ) : (
           items.map((item) => (
-            <View key={item.id} style={styles.itemCard}>
+            <TouchableOpacity
+              key={item.id}
+              style={styles.itemCard}
+              onPress={() => item.recyclable && handleRecycle(item)}
+              activeOpacity={item.recyclable ? 0.7 : 1}
+              disabled={!item.recyclable}
+            >
               <Text style={styles.itemIcon}>{item.icon}</Text>
               <View style={styles.itemInfo}>
                 <Text style={styles.itemName}>{item.name}</Text>
@@ -48,14 +85,14 @@ export default function SearchScreen() {
                 <Text style={styles.itemTips}>{item.tips}</Text>
               </View>
               <View style={styles.itemRight}>
-                {item.recyclable ? (
-                  <Text style={styles.recyclable}>✅</Text>
-                ) : (
-                  <Text style={styles.notRecyclable}>❌</Text>
+                <Text style={styles.recyclable}>
+                  {item.recyclable ? "✅" : "❌"}
+                </Text>
+                {item.recyclable && (
+                  <Text style={styles.points}>+{item.points}</Text>
                 )}
-                <Text style={styles.points}>+{item.points}</Text>
               </View>
-            </View>
+            </TouchableOpacity>
           ))
         )}
       </ScrollView>
@@ -64,27 +101,18 @@ export default function SearchScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F5F5F5' },
+  container: { flex: 1, backgroundColor: "#F5F5F5" },
   scrollContent: { padding: 16 },
   header: { marginBottom: 16 },
   headerTitle: {
     fontSize: 24,
-    fontWeight: 'bold',
-    color: '#2E7D32',
+    fontWeight: "bold",
+    color: "#2E7D32",
   },
   headerSubtitle: {
     fontSize: 14,
-    color: '#666',
+    color: "#666",
     marginTop: 4,
-  },
-  itemCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    elevation: 2,
   },
   itemIcon: {
     fontSize: 32,
@@ -95,22 +123,22 @@ const styles = StyleSheet.create({
   },
   itemName: {
     fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
+    fontWeight: "bold",
+    color: "#333",
   },
   itemCategory: {
     fontSize: 12,
-    color: '#2E7D32',
+    color: "#2E7D32",
     marginTop: 2,
-    textTransform: 'capitalize',
+    textTransform: "capitalize",
   },
   itemTips: {
     fontSize: 11,
-    color: '#999',
+    color: "#999",
     marginTop: 2,
   },
   itemRight: {
-    alignItems: 'center',
+    alignItems: "center",
   },
   recyclable: {
     fontSize: 24,
@@ -120,8 +148,21 @@ const styles = StyleSheet.create({
   },
   points: {
     fontSize: 14,
-    fontWeight: 'bold',
-    color: '#2E7D32',
+    fontWeight: "bold",
+    color: "#2E7D32",
     marginTop: 4,
+  },
+  itemCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
   },
 });
