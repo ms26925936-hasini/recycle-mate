@@ -1,26 +1,58 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { getAllItems } from "@/services/firestoreService";
 import { recordRecycle } from "@/services/recycleService";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { isOnline } from '@/services/networkService';
+import {
+  cacheItems,
+  getCachedItems,
+} from '@/services/cacheService';
+import { useFocusEffect } from 'expo-router';
 
 export default function SearchScreen() {
+  const [isOffline, setIsOffline] = useState(false);
   const { user } = useAuth();
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    loadItems();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      loadItems();
+    }, [])
+  );
 
   const loadItems = async () => {
     setLoading(true);
-    const { items: itemsData, error } = await getAllItems();
-    if (!error) {
-      setItems(itemsData);
+    try {
+      const online = await isOnline();
+      setIsOffline(!online);
+
+      if (online) {
+        const { items: itemsData, error } = await getAllItems();
+        if (!error) {
+          setItems(itemsData);
+          await cacheItems(itemsData);
+        } else {
+          const { data: cachedItems } = await getCachedItems();
+          if (cachedItems) {
+            setItems(cachedItems);
+          }
+        }
+      } else {
+        const { data: cachedItems } = await getCachedItems();
+        if (cachedItems) {
+          setItems(cachedItems);
+        } else {
+          setItems([]);
+        }
+      }
+    } catch (error) {
+      console.log('Error:', error);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const handleRecycle = (item: any) => {
@@ -55,6 +87,15 @@ export default function SearchScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={["bottom"]}>
+
+      {isOffline && (
+        <View style={styles.offlineBanner}>
+          <Text style={styles.offlineText}>
+            📡 Offline - Showing cached items
+          </Text>
+        </View>
+      )}
+
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
           <Text style={styles.headerTitle}>🔍 Search Items</Text>
@@ -164,5 +205,15 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 4,
+  },
+  offlineBanner: {
+    backgroundColor: '#FF9800',
+    padding: 10,
+    alignItems: 'center',
+  },
+  offlineText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: 'bold',
   },
 });

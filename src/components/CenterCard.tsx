@@ -1,10 +1,4 @@
-import React from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-} from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 interface CenterCardProps {
   name: string;
@@ -13,6 +7,7 @@ interface CenterCardProps {
   openHours?: string;
   rating?: number;
   materials?: string[];
+  distance?: string;
   onPress?: () => void;
 }
 
@@ -23,20 +18,28 @@ export default function CenterCard({
   openHours,
   rating,
   materials = [],
+  distance,
   onPress,
 }: CenterCardProps) {
   const content = (
     <View style={styles.card}>
-      {/* Header: Name + Rating */}
+      {/* Header: Name + Distance + Rating */}
       <View style={styles.header}>
         <Text style={styles.name} numberOfLines={1}>
           {name}
         </Text>
-        {rating !== undefined && (
-          <View style={styles.ratingBadge}>
-            <Text style={styles.ratingText}>⭐ {rating.toFixed(1)}</Text>
-          </View>
-        )}
+        <View style={styles.headerRight}>
+          {distance && (
+            <View style={styles.distanceBadge}>
+              <Text style={styles.distanceText}>📍 {distance}</Text>
+            </View>
+          )}
+          {rating !== undefined && (
+            <View style={styles.ratingBadge}>
+              <Text style={styles.ratingText}>⭐ {rating.toFixed(1)}</Text>
+            </View>
+          )}
+        </View>
       </View>
 
       {/* Address */}
@@ -89,43 +92,43 @@ export default function CenterCard({
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#FFFFFF",
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
     elevation: 2,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 4,
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 10,
   },
   name: {
     fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
+    fontWeight: "bold",
+    color: "#333",
     flex: 1,
     marginRight: 8,
   },
   ratingBadge: {
-    backgroundColor: '#FFF9C4',
+    backgroundColor: "#FFF9C4",
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
   },
   ratingText: {
     fontSize: 12,
-    fontWeight: 'bold',
-    color: '#F57F17',
+    fontWeight: "bold",
+    color: "#F57F17",
   },
   infoRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
+    flexDirection: "row",
+    alignItems: "flex-start",
     marginBottom: 6,
   },
   infoIcon: {
@@ -135,17 +138,17 @@ const styles = StyleSheet.create({
   },
   infoText: {
     fontSize: 13,
-    color: '#666',
+    color: "#666",
     flex: 1,
     lineHeight: 18,
   },
   materialsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    flexWrap: "wrap",
     marginTop: 8,
   },
   materialChip: {
-    backgroundColor: '#E8F5E9',
+    backgroundColor: "#E8F5E9",
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
@@ -154,8 +157,24 @@ const styles = StyleSheet.create({
   },
   materialText: {
     fontSize: 11,
-    color: '#2E7D32',
-    fontWeight: '600',
-    textTransform: 'capitalize',
+    color: "#2E7D32",
+    fontWeight: "600",
+    textTransform: "capitalize",
+  },
+  headerRight: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  distanceBadge: {
+    backgroundColor: "#E3F2FD",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginRight: 6,
+  },
+  distanceText: {
+    fontSize: 12,
+    fontWeight: "bold",
+    color: "#1976D2",
   },
 });

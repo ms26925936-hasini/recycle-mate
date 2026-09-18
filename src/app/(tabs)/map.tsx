@@ -1,34 +1,129 @@
-import { getAllCenters } from "@/services/firestoreService";
-import { useEffect, useState } from "react";
-import CenterCard from "@/components/CenterCard";
+import { useState, useEffect, useCallback } from "react";
+import { useFocusEffect } from 'expo-router';
 import {
-  ActivityIndicator,
-  ScrollView,
-  StyleSheet,
-  Text,
   View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  ActivityIndicator,
+  TouchableOpacity,
+  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
+import { getAllCenters } from "@/services/firestoreService";
+import {
+  requestLocationPermission,
+  getCurrentLocation,
+  sortCentersByDistance,
+  formatDistance,
+} from "@/services/locationService";
+import CenterCard from "@/components/CenterCard";
+import { isOnline } from "@/services/networkService";
+import { cacheCenters, getCachedCenters } from "@/services/cacheService";
 
 export default function MapScreen() {
+  const [isOffline, setIsOffline] = useState(false);
   const [centers, setCenters] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [userLocation, setUserLocation] = useState<{
+    latitude: number;
+    longitude: number;
+  } | null>(null);
+  const [locationLoading, setLocationLoading] = useState(false);
 
-  useEffect(() => {
-    loadCenters();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      loadCenters();
+    }, [])
+  );
 
   const loadCenters = async () => {
     setLoading(true);
-    const { centers: centersData, error } = await getAllCenters();
-    if (!error) {
-      setCenters(centersData);
+    try {
+      const online = await isOnline();
+      setIsOffline(!online);
+
+      if (online) {
+        // Online: Fetch from Firestore
+        const { centers: centersData, error } = await getAllCenters();
+        if (!error) {
+          setCenters(centersData);
+          // Cache data
+          await cacheCenters(centersData);
+        } else {
+          // Fallback to cache
+          const { data: cachedCenters } = await getCachedCenters();
+          if (cachedCenters) {
+            setCenters(cachedCenters);
+          }
+        }
+      } else {
+        // Offline: Load from cache
+        const { data: cachedCenters } = await getCachedCenters();
+        if (cachedCenters) {
+          setCenters(cachedCenters);
+        } else {
+          setCenters([]);
+        }
+      }
+    } catch (error) {
+      console.log('Error:', error);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
+  };
+
+  const handleNearMe = async () => {
+    setLocationLoading(true);
+
+    // Step 1: Request permission
+    const { granted, error: permError } = await requestLocationPermission();
+    if (!granted) {
+      Alert.alert(
+        "Permission Required",
+        "Please enable location access to find nearby centers.",
+        [{ text: "OK" }],
+      );
+      setLocationLoading(false);
+      return;
+    }
+
+    // Step 2: Get location
+    const { location, error: locError } = await getCurrentLocation();
+    if (locError || !location) {
+      Alert.alert("Error", "Could not get your location. Try again.");
+      setLocationLoading(false);
+      return;
+    }
+
+    // Step 3: Sort centers by distance
+    setUserLocation(location);
+    const sortedCenters = sortCentersByDistance(
+      centers,
+      location.latitude,
+      location.longitude,
+    );
+    setCenters(sortedCenters);
+
+    setLocationLoading(false);
+    Alert.alert(
+      "📍 Location Found",
+      `Centers sorted by distance from your location.`,
+    );
   };
 
   return (
     <SafeAreaView style={styles.container} edges={["bottom"]}>
+
+      {isOffline && (
+        <View style={styles.offlineBanner}>
+          <Text style={styles.offlineText}>
+            📡 Offline - Showing cached centers
+          </Text>
+        </View>
+      )}
+
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
           <Text style={styles.headerTitle}>🗺️ Recycling Centers</Text>
@@ -36,6 +131,25 @@ export default function MapScreen() {
             {centers.length} centers available
           </Text>
         </View>
+
+        {/* Near Me Button */}
+        <TouchableOpacity
+          style={[
+            styles.nearMeButton,
+            locationLoading && styles.nearMeButtonDisabled,
+          ]}
+          onPress={handleNearMe}
+          disabled={locationLoading}
+        >
+          <Ionicons name="location" size={20} color="#FFFFFF" />
+          <Text style={styles.nearMeText}>
+            {locationLoading
+              ? "Finding your location..."
+              : userLocation
+                ? "📍 Location Active"
+                : "Find Centers Near Me"}
+          </Text>
+        </TouchableOpacity>
 
         {loading ? (
           <ActivityIndicator
@@ -53,6 +167,11 @@ export default function MapScreen() {
               openHours={center.openHours}
               rating={center.rating}
               materials={center.materials}
+              distance={
+                center.distance !== undefined
+                  ? formatDistance(center.distance)
+                  : undefined
+              }
               onPress={() => {
                 console.log("Center pressed:", center.name);
               }}
@@ -78,61 +197,33 @@ const styles = StyleSheet.create({
     color: "#666",
     marginTop: 4,
   },
-  centerCard: {
-    backgroundColor: "#FFFFFF",
+  nearMeButton: {
+    backgroundColor: "#2E7D32",
     borderRadius: 12,
     padding: 16,
-    marginBottom: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 16,
     elevation: 2,
   },
-  centerHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 8,
+  nearMeButtonDisabled: {
+    backgroundColor: "#A5D6A7",
   },
-  centerName: {
+  nearMeText: {
+    color: "#FFFFFF",
     fontSize: 16,
     fontWeight: "bold",
-    color: "#333",
-    flex: 1,
+    marginLeft: 8,
   },
-  centerRating: {
-    fontSize: 14,
-    color: "#F57F17",
-    fontWeight: "bold",
+  offlineBanner: {
+    backgroundColor: '#FF9800',
+    padding: 10,
+    alignItems: 'center',
   },
-  centerAddress: {
+  offlineText: {
+    color: '#FFFFFF',
     fontSize: 13,
-    color: "#666",
-    marginBottom: 4,
-  },
-  centerHours: {
-    fontSize: 13,
-    color: "#666",
-    marginBottom: 4,
-  },
-  centerPhone: {
-    fontSize: 13,
-    color: "#666",
-    marginBottom: 8,
-  },
-  materialsRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    marginTop: 8,
-  },
-  materialChip: {
-    backgroundColor: "#E8F5E9",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-    marginRight: 6,
-    marginBottom: 6,
-  },
-  materialText: {
-    fontSize: 11,
-    color: "#2E7D32",
-    fontWeight: "600",
+    fontWeight: 'bold',
   },
 });

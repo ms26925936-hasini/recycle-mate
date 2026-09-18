@@ -1,27 +1,33 @@
-import { useFocusEffect } from 'expo-router';
-import { useCallback } from 'react';
-import { useState, useEffect } from "react";
 import ProgressRing from "@/components/ProgressRing";
+import { useAuth } from "@/contexts/AuthContext";
 import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
+  cacheUserProfile,
+  getCachedUserProfile,
+} from "@/services/cacheService";
+import { getUserProfile } from "@/services/firestoreService";
+import { isOnline } from "@/services/networkService";
+import { useFocusEffect } from "expo-router";
+import { useCallback, useEffect, useState } from "react";
+import {
   ActivityIndicator,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+  TouchableOpacity
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useAuth } from "@/contexts/AuthContext";
-import { getUserProfile } from "@/services/firestoreService";
 
 export default function HomeScreen() {
   const { user } = useAuth();
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [isOffline, setIsOffline] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
       loadUserProfile();
-    }, [user])
+    }, [user]),
   );
 
   const loadUserProfile = async () => {
@@ -32,16 +38,44 @@ export default function HomeScreen() {
 
     try {
       setLoading(true);
-      const { user: userProfile, error } = await getUserProfile(user.uid);
 
-      if (error) {
-        setProfile({ points: 0, itemsRecycled: 0 });
+      // Check network
+      const online = await isOnline();
+      setIsOffline(!online);
+
+      if (online) {
+        // Online: Fetch from Firestore
+        const { user: userProfile, error } = await getUserProfile(user.uid);
+
+        if (error) {
+          // Fallback to cache
+          const { data: cachedProfile } = await getCachedUserProfile();
+          if (cachedProfile) {
+            setProfile(cachedProfile);
+          } else {
+            setProfile({ points: 0, itemsRecycled: 0 });
+          }
+        } else {
+          setProfile(userProfile);
+          // Save to cache
+          await cacheUserProfile(userProfile);
+        }
       } else {
-        setProfile(userProfile);
+        // Offline: Load from cache
+        const { data: cachedProfile } = await getCachedUserProfile();
+        if (cachedProfile) {
+          setProfile(cachedProfile);
+        } else {
+          setProfile({ points: 0, itemsRecycled: 0 });
+        }
       }
     } catch (err) {
-      console.log("Unexpected error:", err);
-      setProfile({ points: 0, itemsRecycled: 0 });
+      console.log("Error:", err);
+      // Fallback to cache on error
+      const { data: cachedProfile } = await getCachedUserProfile();
+      if (cachedProfile) {
+        setProfile(cachedProfile);
+      }
     } finally {
       setLoading(false);
     }
@@ -49,14 +83,21 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={["bottom"]}>
+      
+      {isOffline && (
+        <View style={styles.offlineBanner}>
+          <Text style={styles.offlineText}>
+            📡 Offline Mode - Showing cached data
+          </Text>
+        </View>
+      )}
+
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        {/* Welcome Card */}
         <View style={styles.welcomeCard}>
           <Text style={styles.welcomeTitle}>♻️ Welcome back!</Text>
           <Text style={styles.welcomeSubtitle}>{user?.email || "User"}</Text>
         </View>
 
-        {/* Points Card */}
         <View style={styles.pointsCard}>
           <Text style={styles.pointsLabel}>Your Eco Points</Text>
           {loading ? (
@@ -75,16 +116,20 @@ export default function HomeScreen() {
           )}
         </View>
 
-        {/* Nearby Centers */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>📍 Nearby Centers</Text>
-          <Text style={styles.placeholder}>Map feature coming soon...</Text>
+          <Text style={styles.placeholder}>
+            {isOffline
+              ? "Available in Locate tab (cached)"
+              : "Go to Locate tab to find centers"}
+          </Text>
         </View>
 
-        {/* Recent Activity */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>🕐 Recent Activity</Text>
-          <Text style={styles.placeholder}>No activity yet</Text>
+          <Text style={styles.placeholder}>
+            {isOffline ? "Activity requires internet" : "No activity yet"}
+          </Text>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -93,6 +138,16 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#F5F5F5" },
+  offlineBanner: {
+    backgroundColor: "#FF9800",
+    padding: 10,
+    alignItems: "center",
+  },
+  offlineText: {
+    color: "#FFFFFF",
+    fontSize: 13,
+    fontWeight: "bold",
+  },
   scrollContent: { padding: 16 },
   welcomeCard: {
     backgroundColor: "#2E7D32",
@@ -123,16 +178,7 @@ const styles = StyleSheet.create({
     color: "#666",
     textTransform: "uppercase",
     letterSpacing: 1,
-  },
-  pointsValue: {
-    fontSize: 48,
-    fontWeight: "bold",
-    color: "#2E7D32",
-    marginVertical: 8,
-  },
-  pointsSubtext: {
-    fontSize: 12,
-    color: "#999",
+    marginBottom: 16,
   },
   section: {
     backgroundColor: "#FFFFFF",
