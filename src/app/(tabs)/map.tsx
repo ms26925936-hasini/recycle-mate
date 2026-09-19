@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect } from "expo-router";
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   TouchableOpacity,
   Alert,
+  FlatList,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -35,7 +36,7 @@ export default function MapScreen() {
   useFocusEffect(
     useCallback(() => {
       loadCenters();
-    }, [])
+    }, []),
   );
 
   const loadCenters = async () => {
@@ -68,7 +69,7 @@ export default function MapScreen() {
         }
       }
     } catch (error) {
-      console.log('Error:', error);
+      console.log("Error:", error);
     } finally {
       setLoading(false);
     }
@@ -115,7 +116,6 @@ export default function MapScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={["bottom"]}>
-
       {isOffline && (
         <View style={styles.offlineBanner}>
           <Text style={styles.offlineText}>
@@ -124,61 +124,76 @@ export default function MapScreen() {
         </View>
       )}
 
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>🗺️ Recycling Centers</Text>
-          <Text style={styles.headerSubtitle}>
-            {centers.length} centers available
-          </Text>
+      {loading ? (
+        <View style={styles.center}>
+          <ActivityIndicator size="large" color="#2E7D32" />
         </View>
+      ) : (
+        <FlatList
+          data={centers}
+          keyExtractor={(item) => item.id}
+          // ⭐ Header components (ScrollView එකේ තිබ්බ දේවල්)
+          ListHeaderComponent={
+            <>
+              <View style={styles.header}>
+                <Text style={styles.headerTitle}>🗺️ Recycling Centers</Text>
+                <Text style={styles.headerSubtitle}>
+                  {centers.length} centers available
+                </Text>
+              </View>
 
-        {/* Near Me Button */}
-        <TouchableOpacity
-          style={[
-            styles.nearMeButton,
-            locationLoading && styles.nearMeButtonDisabled,
-          ]}
-          onPress={handleNearMe}
-          disabled={locationLoading}
-        >
-          <Ionicons name="location" size={20} color="#FFFFFF" />
-          <Text style={styles.nearMeText}>
-            {locationLoading
-              ? "Finding your location..."
-              : userLocation
-                ? "📍 Location Active"
-                : "Find Centers Near Me"}
-          </Text>
-        </TouchableOpacity>
-
-        {loading ? (
-          <ActivityIndicator
-            size="large"
-            color="#2E7D32"
-            style={{ marginTop: 40 }}
-          />
-        ) : (
-          centers.map((center) => (
+              <TouchableOpacity
+                style={[
+                  styles.nearMeButton,
+                  locationLoading && styles.nearMeButtonDisabled,
+                ]}
+                onPress={handleNearMe}
+                disabled={locationLoading}
+              >
+                <Ionicons name="location" size={20} color="#FFFFFF" />
+                <Text style={styles.nearMeText}>
+                  {locationLoading
+                    ? "Finding your location..."
+                    : userLocation
+                      ? "📍 Location Active"
+                      : "Find Centers Near Me"}
+                </Text>
+              </TouchableOpacity>
+            </>
+          }
+          // Empty state
+          ListEmptyComponent={
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyIcon}>📭</Text>
+              <Text style={styles.emptyText}>No centers found</Text>
+            </View>
+          }
+          renderItem={({ item }) => (
             <CenterCard
-              key={center.id}
-              name={center.name}
-              address={center.address}
-              phone={center.phone}
-              openHours={center.openHours}
-              rating={center.rating}
-              materials={center.materials}
+              name={item.name}
+              address={item.address}
+              phone={item.phone}
+              openHours={item.openHours}
+              rating={item.rating}
+              materials={item.materials}
               distance={
-                center.distance !== undefined
-                  ? formatDistance(center.distance)
+                item.distance !== undefined
+                  ? formatDistance(item.distance)
                   : undefined
               }
               onPress={() => {
-                console.log("Center pressed:", center.name);
+                console.log("Center pressed:", item.name);
               }}
             />
-          ))
-        )}
-      </ScrollView>
+          )}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+          initialNumToRender={5}
+          maxToRenderPerBatch={5}
+          windowSize={5}
+          removeClippedSubviews={true}
+        />
+      )}
     </SafeAreaView>
   );
 }
@@ -217,13 +232,35 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   offlineBanner: {
-    backgroundColor: '#FF9800',
+    backgroundColor: "#FF9800",
     padding: 10,
-    alignItems: 'center',
+    alignItems: "center",
   },
   offlineText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 13,
-    fontWeight: 'bold',
+    fontWeight: "bold",
+  },
+  center: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  listContent: {
+    padding: 16,
+    paddingBottom: 32,
+  },
+  emptyState: {
+    alignItems: "center",
+    paddingVertical: 60,
+  },
+  emptyIcon: {
+    fontSize: 64,
+    marginBottom: 12,
+  },
+  emptyText: {
+    fontSize: 16,
+    color: "#999",
+    textAlign: "center",
   },
 });

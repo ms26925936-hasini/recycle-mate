@@ -1,27 +1,51 @@
+import CategoryDropdown from "@/components/CategoryDropdown";
+import { CATEGORIES, Category } from "@/constants/categories";
 import { useAuth } from "@/contexts/AuthContext";
+import { cacheItems, getCachedItems } from "@/services/cacheService";
 import { getAllItems } from "@/services/firestoreService";
+import { isOnline } from "@/services/networkService";
 import { recordRecycle } from "@/services/recycleService";
-import { useEffect, useState, useCallback } from "react";
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { isOnline } from '@/services/networkService';
+import { useFocusEffect, useRouter } from "expo-router";
+import { useCallback, useEffect, useState } from "react";
 import {
-  cacheItems,
-  getCachedItems,
-} from '@/services/cacheService';
-import { useFocusEffect } from 'expo-router';
+  ActivityIndicator,
+  Alert,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+  FlatList,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function SearchScreen() {
-  const [isOffline, setIsOffline] = useState(false);
+  const router = useRouter();
   const { user } = useAuth();
   const [items, setItems] = useState<any[]>([]);
+  const [filteredItems, setFilteredItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isOffline, setIsOffline] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<Category>(
+    CATEGORIES[0], // "all"
+  );
 
   useFocusEffect(
     useCallback(() => {
       loadItems();
-    }, [])
+    }, []),
   );
+
+  // Filter items when category changes
+  useEffect(() => {
+    if (selectedCategory.id === "all") {
+      setFilteredItems(items);
+    } else {
+      setFilteredItems(
+        items.filter((item) => item.category === selectedCategory.id),
+      );
+    }
+  }, [selectedCategory, items]);
 
   const loadItems = async () => {
     setLoading(true);
@@ -36,9 +60,7 @@ export default function SearchScreen() {
           await cacheItems(itemsData);
         } else {
           const { data: cachedItems } = await getCachedItems();
-          if (cachedItems) {
-            setItems(cachedItems);
-          }
+          if (cachedItems) setItems(cachedItems);
         }
       } else {
         const { data: cachedItems } = await getCachedItems();
@@ -49,45 +71,26 @@ export default function SearchScreen() {
         }
       }
     } catch (error) {
-      console.log('Error:', error);
+      console.log("Error:", error);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleRecycle = (item: any) => {
-    if (!user) {
-      Alert.alert("Error", "Please login first");
-      return;
-    }
-
-    Alert.alert(
-      "Confirm Recycling",
-      `Did you recycle "${item.name}"?\n\nYou'll earn ${item.points} points!`,
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Yes, I did!",
-          onPress: async () => {
-            const { error } = await recordRecycle(user.uid, item);
-            if (error) {
-              Alert.alert("Error", error);
-            } else {
-              Alert.alert(
-                "🎉 Success!",
-                `You earned ${item.points} eco-points!`,
-                [{ text: "Awesome!" }],
-              );
-            }
-          },
-        },
-      ],
-    );
+  const getCategoryIcon = (category: string) => {
+    const icons: Record<string, string> = {
+      plastic: "🍶",
+      glass: "🍾",
+      paper: "📰",
+      metal: "🥫",
+      ewaste: "📱",
+      organic: "🍃",
+    };
+    return icons[category] || "♻️";
   };
 
   return (
     <SafeAreaView style={styles.container} edges={["bottom"]}>
-
       {isOffline && (
         <View style={styles.offlineBanner}>
           <Text style={styles.offlineText}>
@@ -96,30 +99,50 @@ export default function SearchScreen() {
         </View>
       )}
 
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>🔍 Search Items</Text>
-          <Text style={styles.headerSubtitle}>
-            {items.length} items in database
-          </Text>
+      {loading ? (
+        <View style={styles.center}>
+          <ActivityIndicator size="large" color="#2E7D32" />
         </View>
+      ) : (
+        <FlatList
+          data={filteredItems}
+          keyExtractor={(item) => item.id}
+          ListHeaderComponent={
+            <>
+              <View style={styles.header}>
+                <Text style={styles.headerTitle}>🔍 Search Items</Text>
+                <Text style={styles.headerSubtitle}>
+                  {filteredItems.length} items
+                  {selectedCategory.id !== "all" &&
+                    ` in ${selectedCategory.label}`}
+                </Text>
+              </View>
 
-        {loading ? (
-          <ActivityIndicator
-            size="large"
-            color="#2E7D32"
-            style={{ marginTop: 40 }}
-          />
-        ) : (
-          items.map((item) => (
+              <CategoryDropdown
+                categories={CATEGORIES}
+                selectedCategory={selectedCategory}
+                onSelect={setSelectedCategory}
+              />
+            </>
+          }
+          ListEmptyComponent={
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyIcon}>📭</Text>
+              <Text style={styles.emptyText}>
+                No items found in this category
+              </Text>
+            </View>
+          }
+          renderItem={({ item }) => (
             <TouchableOpacity
-              key={item.id}
               style={styles.itemCard}
-              onPress={() => item.recyclable && handleRecycle(item)}
+              onPress={() => router.push(`/item/${item.id}`)}
               activeOpacity={item.recyclable ? 0.7 : 1}
               disabled={!item.recyclable}
             >
-              <Text style={styles.itemIcon}>{item.icon}</Text>
+              <Text style={styles.itemIcon}>
+                {item.icon || getCategoryIcon(item.category)}
+              </Text>
               <View style={styles.itemInfo}>
                 <Text style={styles.itemName}>{item.name}</Text>
                 <Text style={styles.itemCategory}>{item.category}</Text>
@@ -134,15 +157,31 @@ export default function SearchScreen() {
                 )}
               </View>
             </TouchableOpacity>
-          ))
-        )}
-      </ScrollView>
+          )}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+          initialNumToRender={5}
+          maxToRenderPerBatch={5}
+          windowSize={5}
+          removeClippedSubviews={true}
+        />
+      )}
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#F5F5F5" },
+  offlineBanner: {
+    backgroundColor: "#FF9800",
+    padding: 10,
+    alignItems: "center",
+  },
+  offlineText: {
+    color: "#FFFFFF",
+    fontSize: 13,
+    fontWeight: "bold",
+  },
   scrollContent: { padding: 16 },
   header: { marginBottom: 16 },
   headerTitle: {
@@ -154,6 +193,32 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#666",
     marginTop: 4,
+  },
+  emptyState: {
+    alignItems: "center",
+    paddingVertical: 60,
+  },
+  emptyIcon: {
+    fontSize: 64,
+    marginBottom: 12,
+  },
+  emptyText: {
+    fontSize: 16,
+    color: "#999",
+    textAlign: "center",
+  },
+  itemCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
   },
   itemIcon: {
     fontSize: 32,
@@ -184,36 +249,19 @@ const styles = StyleSheet.create({
   recyclable: {
     fontSize: 24,
   },
-  notRecyclable: {
-    fontSize: 24,
-  },
   points: {
     fontSize: 14,
     fontWeight: "bold",
     color: "#2E7D32",
     marginTop: 4,
   },
-  itemCard: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    flexDirection: "row",
+  center: {
+    flex: 1,
+    justifyContent: "center",
     alignItems: "center",
-    elevation: 2,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
   },
-  offlineBanner: {
-    backgroundColor: '#FF9800',
-    padding: 10,
-    alignItems: 'center',
-  },
-  offlineText: {
-    color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: 'bold',
+  listContent: {
+    padding: 16,
+    paddingBottom: 32,
   },
 });

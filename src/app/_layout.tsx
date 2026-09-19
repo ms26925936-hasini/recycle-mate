@@ -15,6 +15,13 @@ export default function RootLayout() {
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="login" options={{ headerShown: false }} />
         <Stack.Screen name="signup" options={{ headerShown: false }} />
+        <Stack.Screen
+          name="item/[id]"
+          options={{
+            title: 'Item Details',
+            headerBackTitle: 'Back',
+          }}
+        />
       </Stack>
       <StatusBar style="light" />
     </AuthProvider>

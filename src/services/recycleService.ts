@@ -8,6 +8,8 @@ import {
 } from "firebase/firestore";
 import { db } from "./firebase";
 import { updateUserPoints } from "./firestoreService";
+let pendingRecycles: any[] = [];
+let batchTimeout: ReturnType<typeof setTimeout> | null = null;
 
 interface RecycleActivity {
   userId: string;
@@ -71,4 +73,26 @@ export const getUserActivities = async (userId: string) => {
   } catch (error: any) {
     return { activities: [], error: error.message };
   }
+};
+
+export const queueRecycle = (
+  userId: string,
+  item: any,
+  callback?: (error: string | null) => void
+) => {
+  pendingRecycles.push({ userId, item });
+
+  if (batchTimeout) {
+    clearTimeout(batchTimeout);
+  }
+
+  batchTimeout = setTimeout(async () => {
+    const batch = [...pendingRecycles];
+    pendingRecycles = [];
+
+    for (const { userId, item } of batch) {
+      const { error } = await recordRecycle(userId, item);
+      if (callback) callback(error);
+    }
+  }, 2000); // Wait 2 seconds to batch
 };

@@ -18,7 +18,7 @@ interface ProgressRingProps {
   onPress?: () => void;
 }
 
-export default function ProgressRing({
+function ProgressRing({
   size = 180,
   strokeWidth = 14,
   progress = 0,
@@ -88,6 +88,8 @@ export default function ProgressRing({
 
   return content;
 }
+
+export default React.memo(ProgressRing);
 
 const styles = StyleSheet.create({
   container: {

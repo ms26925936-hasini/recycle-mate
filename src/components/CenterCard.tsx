@@ -1,4 +1,5 @@
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import React from 'react';
 
 interface CenterCardProps {
   name: string;
@@ -11,7 +12,7 @@ interface CenterCardProps {
   onPress?: () => void;
 }
 
-export default function CenterCard({
+function CenterCard({
   name,
   address,
   phone,
@@ -89,6 +90,13 @@ export default function CenterCard({
 
   return content;
 }
+
+export default React.memo(CenterCard, (prevProps, nextProps) => {
+  return (
+    prevProps.name === nextProps.name &&
+    prevProps.distance === nextProps.distance
+  );
+});
 
 const styles = StyleSheet.create({
   card: {

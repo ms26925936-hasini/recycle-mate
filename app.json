@@ -12,7 +12,9 @@
       "supportsTablet": true,
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "RecycleMate needs your location to find nearby recycling centers."
-      }
+      },
+      "bundleIdentifier": "com.yourname.recyclemate",
+      "jsEngine": "hermes"
     },
     "android": {
       "adaptiveIcon": {
@@ -22,10 +24,11 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "permissions": [
-        "ACCESS_COARSE_LOCATION",
-        "ACCESS_FINE_LOCATION"
-      ]
+      "permissions": ["ACCESS_COARSE_LOCATION", "ACCESS_FINE_LOCATION"],
+      "package": "com.yourname.recyclemate",
+      "versionCode": 1,
+      "userInterfaceStyle": "light",
+      "jsEngine": "hermes"
     },
     "web": {
       "output": "static",
