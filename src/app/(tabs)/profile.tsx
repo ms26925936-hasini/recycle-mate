@@ -1,12 +1,47 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { signOut } from "@/services/authService";
-import { useRouter } from "expo-router";
+import {
+  cacheUserProfile,
+  getCachedUserProfile,
+} from "@/services/cacheService";
+import { getUserProfile } from "@/services/firestoreService";
+import { isOnline } from "@/services/networkService";
+import { useFocusEffect, useRouter } from "expo-router";
+import { useCallback, useState } from "react";
 import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function ProfileScreen() {
   const router = useRouter();
   const { user } = useAuth();
+  const [profile, setProfile] = useState<any>(null);
+
+  // Refresh stats every time the tab gains focus (same as Home)
+  useFocusEffect(
+    useCallback(() => {
+      loadUserProfile();
+    }, [user]),
+  );
+
+  const loadUserProfile = async () => {
+    if (!user) return;
+
+    try {
+      if (await isOnline()) {
+        const { user: userProfile, error } = await getUserProfile(user.uid);
+        if (!error && userProfile) {
+          setProfile(userProfile);
+          await cacheUserProfile(userProfile);
+          return;
+        }
+      }
+      // Offline or Firestore error: fall back to cache
+      const { data: cachedProfile } = await getCachedUserProfile();
+      setProfile(cachedProfile || { points: 0, itemsRecycled: 0 });
+    } catch (err) {
+      console.log("Error:", err);
+    }
+  };
 
   const handleLogout = async () => {
     Alert.alert("Logout", "Are you sure you want to logout?", [
@@ -39,11 +74,11 @@ export default function ProfileScreen() {
 
         <View style={styles.statsRow}>
           <View style={styles.statCard}>
-            <Text style={styles.statValue}>0</Text>
+            <Text style={styles.statValue}>{profile?.points || 0}</Text>
             <Text style={styles.statLabel}>Eco Points</Text>
           </View>
           <View style={styles.statCard}>
-            <Text style={styles.statValue}>0</Text>
+            <Text style={styles.statValue}>{profile?.itemsRecycled || 0}</Text>
             <Text style={styles.statLabel}>Items Recycled</Text>
           </View>
         </View>
@@ -88,12 +123,6 @@ export default function ProfileScreen() {
         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
           <Text style={styles.logoutText}>🚪 Logout</Text>
         </TouchableOpacity>
-
-        <View style={styles.section}>
-          <Text style={styles.placeholder}>
-            🚧 Login / Signup will be implemented in Week 2
-          </Text>
-        </View>
       </ScrollView>
     </SafeAreaView>
   );
